@@ -5,28 +5,8 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     systems.url = "github:nix-systems/default-linux";
 
-    hyprgraphics = {
-      url = "github:hyprwm/hyprgraphics";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.systems.follows = "systems";
-      inputs.hyprutils.follows = "hyprutils";
-    };
-
-    hyprutils = {
-      url = "github:hyprwm/hyprutils";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.systems.follows = "systems";
-    };
-
-    hyprlang = {
-      url = "github:hyprwm/hyprlang";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.systems.follows = "systems";
-      inputs.hyprutils.follows = "hyprutils";
-    };
-
-    hyprwayland-scanner = {
-      url = "github:hyprwm/hyprwayland-scanner";
+    hyprtoolkit = {
+      url = "git+file:///home/max/desk/hyprtoolkit";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.systems.follows = "systems";
     };

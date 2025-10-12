@@ -1,14 +1,13 @@
 #pragma once
 #include "../helpers/Log.hpp"
-#include "../helpers/Color.hpp"
+#include <hyprtoolkit/types/SizeType.hpp>
 #include <hyprutils/math/Vector2D.hpp>
 #include <hyprutils/string/VarList.hpp>
+#include <hyprtoolkit/palette/Color.hpp>
 #include <any>
 #include <string>
 #include <vector>
 #include <cmath>
-
-using namespace Hyprutils::String;
 
 enum eConfigValueDataTypes {
     CVD_TYPE_INVALID  = -1,
@@ -27,15 +26,15 @@ class ICustomConfigValueData {
 
 class CLayoutValueData : public ICustomConfigValueData {
   public:
-    CLayoutValueData() = default;
-    virtual ~CLayoutValueData() {};
+    CLayoutValueData()          = default;
+    virtual ~CLayoutValueData() = default;
 
     virtual eConfigValueDataTypes getDataType() {
         return CVD_TYPE_LAYOUT;
     }
 
     virtual std::string toString() {
-        return std::format("{}{},{}{}", m_vValues.x, (m_sIsRelative.x) ? "%" : "px", m_vValues.y, (m_sIsRelative.y) ? "%" : "px");
+        return std::format("{}{},{}{}", m_values.x, (m_sIsRelative.x) ? "%" : "px", m_values.y, (m_sIsRelative.y) ? "%" : "px");
     }
 
     static CLayoutValueData* fromAnyPv(const std::any& v) {
@@ -47,12 +46,18 @@ class CLayoutValueData : public ICustomConfigValueData {
 
     Hyprutils::Math::Vector2D getAbsolute(const Hyprutils::Math::Vector2D& viewport) {
         return {
-            (m_sIsRelative.x ? (m_vValues.x / 100) * viewport.x : m_vValues.x),
-            (m_sIsRelative.y ? (m_vValues.y / 100) * viewport.y : m_vValues.y),
+            (m_sIsRelative.x ? (m_values.x / 100) * viewport.x : m_values.x),
+            (m_sIsRelative.y ? (m_values.y / 100) * viewport.y : m_values.y),
         };
     }
 
-    Hyprutils::Math::Vector2D m_vValues;
+    Hyprtoolkit::CDynamicSize toDynamicSize() {
+        return Hyprtoolkit::CDynamicSize(m_sIsRelative.x ? Hyprtoolkit::CDynamicSize::HT_SIZE_PERCENT : Hyprtoolkit::CDynamicSize::HT_SIZE_ABSOLUTE,
+                                         m_sIsRelative.y ? Hyprtoolkit::CDynamicSize::HT_SIZE_PERCENT : Hyprtoolkit::CDynamicSize::HT_SIZE_ABSOLUTE,
+                                         {m_sIsRelative.x ? m_values.x / 100 : m_values.x, m_sIsRelative.y ? m_values.y / 100 : m_values.y});
+    }
+
+    Hyprutils::Math::Vector2D m_values;
     struct {
         bool x = false;
         bool y = false;
@@ -61,18 +66,18 @@ class CLayoutValueData : public ICustomConfigValueData {
 
 class CGradientValueData : public ICustomConfigValueData {
   public:
-    CGradientValueData() {};
-    CGradientValueData(CHyprColor col) {
+    CGradientValueData() = default;
+    CGradientValueData(Hyprtoolkit::CHyprColor col) {
         m_vColors.push_back(col);
         updateColorsOk();
     };
-    virtual ~CGradientValueData() {};
+    virtual ~CGradientValueData() = default;
 
     virtual eConfigValueDataTypes getDataType() {
         return CVD_TYPE_GRADIENT;
     }
 
-    void reset(CHyprColor col) {
+    void reset(Hyprtoolkit::CHyprColor col) {
         m_vColors.clear();
         m_vColors.emplace_back(col);
         m_fAngle = 0;
@@ -91,7 +96,7 @@ class CGradientValueData : public ICustomConfigValueData {
     }
 
     /* Vector containing the colors */
-    std::vector<CHyprColor> m_vColors;
+    std::vector<Hyprtoolkit::CHyprColor> m_vColors;
 
     /* Vector containing pure colors for shoving into opengl */
     std::vector<float> m_vColorsOkLabA;

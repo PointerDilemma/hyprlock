@@ -6,13 +6,12 @@
 #include "src/helpers/Log.hpp"
 
 #include <hyprlang.hpp>
-#include <memory>
 
 CAuth::CAuth() {
-    static const auto ENABLEPAM = g_pConfigManager->getValue<Hyprlang::INT>("auth:pam:enabled");
+    static const auto ENABLEPAM = g_configManager->getValue<Hyprlang::INT>("auth:pam:enabled");
     if (*ENABLEPAM)
         m_vImpls.emplace_back(makeShared<CPam>());
-    static const auto ENABLEFINGERPRINT = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:enabled");
+    static const auto ENABLEFINGERPRINT = g_configManager->getValue<Hyprlang::INT>("auth:fingerprint:enabled");
     if (*ENABLEFINGERPRINT)
         m_vImpls.emplace_back(makeShared<CFingerprint>());
 
@@ -25,12 +24,10 @@ void CAuth::start() {
     }
 }
 
-void CAuth::submitInput(const std::string& input) {
+void CAuth::submitInput(std::string_view input) {
     for (const auto& i : m_vImpls) {
         i->handleInput(input);
     }
-
-    g_pHyprlock->clearPasswordBuffer();
 }
 
 bool CAuth::checkWaiting() {
@@ -38,7 +35,7 @@ bool CAuth::checkWaiting() {
 }
 
 const std::string& CAuth::getCurrentFailText() {
-    return m_sCurrentFail.failText;
+    return m_currentFail.failText;
 }
 
 std::optional<std::string> CAuth::getFailText(eAuthImplementations implType) {
@@ -58,7 +55,7 @@ std::optional<std::string> CAuth::getPrompt(eAuthImplementations implType) {
 }
 
 size_t CAuth::getFailedAttempts() {
-    return m_sCurrentFail.failedAttempts;
+    return m_failedAttempts;
 }
 
 SP<IAuthImplementation> CAuth::getImpl(eAuthImplementations implType) {
@@ -76,49 +73,39 @@ void CAuth::terminate() {
     }
 }
 
-static void unlockCallback(ASP<CTimer> self, void* data) {
-    g_pHyprlock->unlock();
+static void unlockCallback(ASP<Hyprtoolkit::CTimer> self, void* data) {
+    g_hyprlock->unlock();
 }
 
 void CAuth::enqueueUnlock() {
-    g_pHyprlock->addTimer(std::chrono::milliseconds(0), unlockCallback, nullptr);
-}
-
-static void passwordFailCallback(ASP<CTimer> self, void* data) {
-    g_pAuth->m_bDisplayFailText = true;
-
-    g_pHyprlock->enqueueForceUpdateTimers();
-
-    g_pHyprlock->renderAllOutputs();
-}
-
-static void displayFailTimeoutCallback(ASP<CTimer> self, void* data) {
-    if (g_pAuth->m_bDisplayFailText) {
-        g_pAuth->m_bDisplayFailText = false;
-        g_pHyprlock->renderAllOutputs();
-    }
+    g_hyprlock->addTimer(std::chrono::milliseconds(0), unlockCallback, nullptr);
 }
 
 void CAuth::enqueueFail(const std::string& failText, eAuthImplementations implType) {
-    static const auto FAILTIMEOUT = g_pConfigManager->getValue<Hyprlang::INT>("general:fail_timeout");
+    static const auto FAILTIMEOUT = g_configManager->getValue<Hyprlang::INT>("general:fail_timeout");
 
-    m_sCurrentFail.failText   = failText;
-    m_sCurrentFail.failSource = implType;
-    m_sCurrentFail.failedAttempts++;
+    m_currentFail.failText   = failText;
+    m_currentFail.failSource = implType;
+    m_failedAttempts++;
 
-    Debug::log(LOG, "Failed attempts: {}", m_sCurrentFail.failedAttempts);
+    Debug::log(LOG, "Failed attempts: {}", m_failedAttempts);
 
     if (m_resetDisplayFailTimer) {
         m_resetDisplayFailTimer->cancel();
         m_resetDisplayFailTimer.reset();
     }
 
-    g_pHyprlock->addTimer(std::chrono::milliseconds(0), passwordFailCallback, nullptr);
-    m_resetDisplayFailTimer = g_pHyprlock->addTimer(std::chrono::milliseconds(*FAILTIMEOUT), displayFailTimeoutCallback, nullptr);
+    g_hyprlock->addTimer(
+        std::chrono::milliseconds(0),
+        [](auto, auto) {
+            g_hyprlock->displayFail();
+            g_auth->m_displayFailText = true;
+        },
+        nullptr);
+    m_resetDisplayFailTimer = g_hyprlock->addTimer(std::chrono::milliseconds(*FAILTIMEOUT), [](auto, auto) { g_hyprlock->displayPlaceholder(); }, nullptr);
 }
 
 void CAuth::resetDisplayFail() {
-    g_pAuth->m_bDisplayFailText = false;
     m_resetDisplayFailTimer->cancel();
     m_resetDisplayFailTimer.reset();
 }

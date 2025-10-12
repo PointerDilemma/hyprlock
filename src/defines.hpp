@@ -1,14 +1,13 @@
 #pragma once
 
+#include <hyprtoolkit/palette/Color.hpp>
 #include <hyprutils/memory/WeakPtr.hpp>
 #include <hyprutils/memory/UniquePtr.hpp>
 #include <hyprutils/memory/Atomic.hpp>
 #include <hyprgraphics/color/Color.hpp>
 
 using namespace Hyprutils::Memory;
-using namespace Hyprgraphics;
-
-using ResourceID = size_t;
+using CHyprColor = Hyprtoolkit::CHyprColor;
 
 #define SP CSharedPointer
 #define WP CWeakPointer

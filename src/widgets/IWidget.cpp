@@ -1,7 +1,7 @@
 #include "IWidget.hpp"
-#include "../../helpers/Log.hpp"
-#include "../../core/hyprlock.hpp"
-#include "../../auth/Auth.hpp"
+#include "../helpers/Log.hpp"
+#include "../core/hyprlock.hpp"
+#include "../auth/Auth.hpp"
 #include <chrono>
 #include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <unistd.h>
@@ -9,6 +9,7 @@
 #include <hyprutils/string/String.hpp>
 #include <hyprutils/string/VarList.hpp>
 
+using namespace Widgets;
 using namespace Hyprutils::String;
 
 #if defined(_LIBCPP_VERSION)
@@ -29,16 +30,16 @@ static Vector2D rotateVector(const Vector2D& vec, const double& ang) {
     return Vector2D((vec.x * COS) + (vec.y * SIN), (vec.x * SIN) + (vec.y * COS));
 }
 
-Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign, const double& ang) {
+Vector2D Widgets::posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign, const double& ang) {
 
     // offset after rotation for alignment
     Vector2D rot;
     if (ang != 0)
         rot = (size - rotateVector(size, ang)) / 2.0;
 
-    Vector2D pos = offset;
+    Vector2D pos = {offset.x, /*hyprtoolkit positions differ from hyprlock config positions*/ -offset.y};
     if (halign == "center")
-        pos.x += viewport.x / 2.0 - size.x / 2.0;
+        pos.x += (viewport.x / 2.0) - (size.x / 2.0);
     else if (halign == "left")
         pos.x += 0 - rot.x;
     else if (halign == "right")
@@ -47,18 +48,18 @@ Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size,
         Debug::log(ERR, "IWidget: invalid halign {}", halign);
 
     if (valign == "center")
-        pos.y += viewport.y / 2.0 - size.y / 2.0;
+        pos.y += (viewport.y / 2.0) - (size.y / 2.0);
     else if (valign == "top")
-        pos.y += viewport.y - size.y + rot.y;
-    else if (valign == "bottom")
         pos.y += 0 - rot.y;
+    else if (valign == "bottom")
+        pos.y += viewport.y - size.y + rot.y;
     else if (valign != "none")
         Debug::log(ERR, "IWidget: invalid valign {}", valign);
 
     return pos;
 }
 
-int IWidget::roundingForBox(const CBox& box, int roundingConfig) {
+int Widgets::roundingForBox(const CBox& box, int roundingConfig) {
     const int MINHALFBOX = std::min(box.w, box.h) / 2.0;
     if (roundingConfig == -1)
         return MINHALFBOX;
@@ -66,7 +67,7 @@ int IWidget::roundingForBox(const CBox& box, int roundingConfig) {
     return std::clamp(roundingConfig, 0, MINHALFBOX);
 }
 
-int IWidget::roundingForBorderBox(const CBox& borderBox, int roundingConfig, int thickness) {
+int Widgets::roundingForBorderBox(const CBox& borderBox, int roundingConfig, int thickness) {
     const int MINHALFBORDER = std::min(borderBox.w, borderBox.h) / 2.0;
     if (roundingConfig == -1)
         return MINHALFBORDER;
@@ -77,7 +78,7 @@ int IWidget::roundingForBorderBox(const CBox& borderBox, int roundingConfig, int
     return std::clamp(roundingConfig + thickness, 0, MINHALFBORDER);
 }
 
-Hyprgraphics::CTextResource::eTextAlignmentMode IWidget::parseTextAlignment(const std::string& alignment) {
+Hyprgraphics::CTextResource::eTextAlignmentMode Widgets::parseTextAlignment(const std::string& alignment) {
     Hyprgraphics::CTextResource::eTextAlignmentMode align = Hyprgraphics::CTextResource::TEXT_ALIGN_LEFT;
     if (alignment == "center")
         align = Hyprgraphics::CTextResource::TEXT_ALIGN_CENTER;
@@ -89,7 +90,7 @@ Hyprgraphics::CTextResource::eTextAlignmentMode IWidget::parseTextAlignment(cons
 
 static void replaceAllAttempts(std::string& str) {
 
-    const size_t      ATTEMPTS = g_pAuth->getFailedAttempts();
+    const size_t      ATTEMPTS = g_auth->getFailedAttempts();
     const std::string STR      = std::to_string(ATTEMPTS);
     size_t            pos      = 0;
 
@@ -111,33 +112,34 @@ static void replaceAllAttempts(std::string& str) {
 }
 
 static void replaceAllLayout(std::string& str) {
-    std::string layoutName = "error";
-    const auto  LAYOUTIDX  = g_pHyprlock->m_uiActiveLayout;
+    //std::string layoutName = "error";
+    // TODO: bring back layout name
+    //const auto  LAYOUTIDX  = g_hyprlock->m_uiActiveLayout;
 
-    if (g_pSeatManager->m_pXKBKeymap) {
-        const auto PNAME = xkb_keymap_layout_get_name(g_pSeatManager->m_pXKBKeymap, LAYOUTIDX);
-        if (PNAME)
-            layoutName = PNAME;
-    }
+    //if (g_pSeatManager->m_pXKBKeymap) {
+    //    const auto PNAME = xkb_keymap_layout_get_name(g_pSeatManager->m_pXKBKeymap, LAYOUTIDX);
+    //    if (PNAME)
+    //        layoutName = PNAME;
+    //}
 
-    size_t pos = 0;
-    while ((pos = str.find("$LAYOUT", pos)) != std::string::npos) {
-        if (str.substr(pos, 8).ends_with('[') && str.substr(pos).contains(']')) {
-            const std::string REPL = str.substr(pos + 8, str.find_first_of(']', pos) - 8 - pos);
-            const CVarList    LANGS(REPL);
-            if (LAYOUTIDX >= LANGS.size()) {
-                Debug::log(ERR, "Layout index {} out of bounds. Max is {}.", LAYOUTIDX, LANGS.size() - 1);
-                return;
-            }
+    //size_t pos = 0;
+    //while ((pos = str.find("$LAYOUT", pos)) != std::string::npos) {
+    //    if (str.substr(pos, 8).ends_with('[') && str.substr(pos).contains(']')) {
+    //        const std::string REPL = str.substr(pos + 8, str.find_first_of(']', pos) - 8 - pos);
+    //        const CVarList    LANGS(REPL);
+    //        if (LAYOUTIDX >= LANGS.size()) {
+    //            Debug::log(ERR, "Layout index {} out of bounds. Max is {}.", LAYOUTIDX, LANGS.size() - 1);
+    //            return;
+    //        }
 
-            const std::string LANG = LANGS[LAYOUTIDX].empty() ? layoutName : LANGS[LAYOUTIDX] == "!" ? "" : LANGS[LAYOUTIDX];
-            str.replace(pos, 9 + REPL.length(), LANG);
-            pos += LANG.length();
-        } else {
-            str.replace(pos, 7, layoutName);
-            pos += layoutName.length();
-        }
-    }
+    //        const std::string LANG = LANGS[LAYOUTIDX].empty() ? layoutName : LANGS[LAYOUTIDX] == "!" ? "" : LANGS[LAYOUTIDX];
+    //        str.replace(pos, 9 + REPL.length(), LANG);
+    //        pos += LANG.length();
+    //    } else {
+    //        str.replace(pos, 7, layoutName);
+    //        pos += layoutName.length();
+    //    }
+    //}
 }
 
 static bool                                                       logMissingTzOnce = true;
@@ -183,7 +185,7 @@ static std::string getTime12h() {
         (HRS < 12 ? " AM" : " PM");
 }
 
-IWidget::SFormatResult IWidget::formatString(std::string in) {
+SFormatResult Widgets::formatString(std::string in) {
 
     auto  uidPassword = getpwuid(getuid());
     char* username    = uidPassword->pw_name;
@@ -195,7 +197,7 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     if (!user_gecos)
         Debug::log(WARN, "Error in formatString, user_gecos null. Errno: ", errno);
 
-    IWidget::SFormatResult result;
+    SFormatResult result;
     replaceInString(in, "$DESC", std::string{user_gecos ? user_gecos : ""});
     replaceInString(in, "$USER", std::string{username ? username : ""});
     replaceInString(in, "<br/>", std::string{"\n"});
@@ -221,31 +223,31 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     }
 
     if (in.contains("$FAIL")) {
-        const auto FAIL = g_pAuth->getCurrentFailText();
+        const auto FAIL = g_auth->getCurrentFailText();
         replaceInString(in, "$FAIL", FAIL);
         result.allowForceUpdate = true;
     }
 
     if (in.contains("$PAMFAIL")) {
-        const auto FAIL = g_pAuth->getFailText(AUTH_IMPL_PAM);
+        const auto FAIL = g_auth->getFailText(AUTH_IMPL_PAM);
         replaceInString(in, "$PAMFAIL", FAIL.value_or(""));
         result.allowForceUpdate = true;
     }
 
     if (in.contains("$PAMPROMPT")) {
-        const auto PROMPT = g_pAuth->getPrompt(AUTH_IMPL_PAM);
+        const auto PROMPT = g_auth->getPrompt(AUTH_IMPL_PAM);
         replaceInString(in, "$PAMPROMPT", PROMPT.value_or(""));
         result.allowForceUpdate = true;
     }
 
     if (in.contains("$FPRINTFAIL")) {
-        const auto FPRINTFAIL = g_pAuth->getFailText(AUTH_IMPL_FINGERPRINT);
+        const auto FPRINTFAIL = g_auth->getFailText(AUTH_IMPL_FINGERPRINT);
         replaceInString(in, "$FPRINTFAIL", FPRINTFAIL.value_or(""));
         result.allowForceUpdate = true;
     }
 
     if (in.contains("$FPRINTPROMPT")) {
-        const auto FPRINTPROMPT = g_pAuth->getPrompt(AUTH_IMPL_FINGERPRINT);
+        const auto FPRINTPROMPT = g_auth->getPrompt(AUTH_IMPL_FINGERPRINT);
         replaceInString(in, "$FPRINTPROMPT", FPRINTPROMPT.value_or(""));
         result.allowForceUpdate = true;
     }
@@ -276,16 +278,4 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
 
     result.formatted = in;
     return result;
-}
-
-void IWidget::setHover(bool hover) {
-    hovered = hover;
-}
-
-bool IWidget::isHovered() const {
-    return hovered;
-}
-
-bool IWidget::containsPoint(const Vector2D& pos) const {
-    return getBoundingBoxWl().containsPoint(pos);
 }

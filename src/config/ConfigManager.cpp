@@ -2,7 +2,6 @@
 #include "ConfigDataValues.hpp"
 #include "../helpers/MiscFunctions.hpp"
 #include "../helpers/Log.hpp"
-#include "../core/AnimationManager.hpp"
 #include <hyprlang.hpp>
 #include <hyprutils/string/String.hpp>
 #include <hyprutils/path/Path.hpp>
@@ -13,6 +12,7 @@
 
 using namespace Hyprutils::String;
 using namespace Hyprutils::Animation;
+using namespace Hyprutils::Math;
 
 ICustomConfigValueData::~ICustomConfigValueData() {
     ; // empty
@@ -22,7 +22,7 @@ static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
     const std::string      VALUE   = v;
     const std::string      COMMAND = c;
 
-    const auto             RESULT = g_pConfigManager->handleSource(COMMAND, VALUE);
+    const auto             RESULT = g_configManager->handleSource(COMMAND, VALUE);
 
     Hyprlang::CParseResult result;
     if (RESULT.has_value())
@@ -30,29 +30,29 @@ static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
     return result;
 }
 
-static Hyprlang::CParseResult handleBezier(const char* c, const char* v) {
-    const std::string      VALUE   = v;
-    const std::string      COMMAND = c;
+// static Hyprlang::CParseResult handleBezier(const char* c, const char* v) {
+//     const std::string      VALUE   = v;
+//     const std::string      COMMAND = c;
+//
+//     const auto             RESULT = g_configManager->handleBezier(COMMAND, VALUE);
+//
+//     Hyprlang::CParseResult result;
+//     if (RESULT.has_value())
+//         result.setError(RESULT.value().c_str());
+//     return result;
+// }
 
-    const auto             RESULT = g_pConfigManager->handleBezier(COMMAND, VALUE);
-
-    Hyprlang::CParseResult result;
-    if (RESULT.has_value())
-        result.setError(RESULT.value().c_str());
-    return result;
-}
-
-static Hyprlang::CParseResult handleAnimation(const char* c, const char* v) {
-    const std::string      VALUE   = v;
-    const std::string      COMMAND = c;
-
-    const auto             RESULT = g_pConfigManager->handleAnimation(COMMAND, VALUE);
-
-    Hyprlang::CParseResult result;
-    if (RESULT.has_value())
-        result.setError(RESULT.value().c_str());
-    return result;
-}
+// static Hyprlang::CParseResult handleAnimation(const char* c, const char* v) {
+//     const std::string      VALUE   = v;
+//     const std::string      COMMAND = c;
+//
+//     const auto             RESULT = g_configManager->handleAnimation(COMMAND, VALUE);
+//
+//     Hyprlang::CParseResult result;
+//     if (RESULT.has_value())
+//         result.setError(RESULT.value().c_str());
+//     return result;
+// }
 
 static Hyprlang::CParseResult configHandleLayoutOption(const char* v, void** data) {
     const std::string      VALUE = v;
@@ -89,7 +89,7 @@ static Hyprlang::CParseResult configHandleLayoutOption(const char* v, void** dat
         rhs.pop_back();
     }
 
-    DATA->m_vValues = Hyprutils::Math::Vector2D{std::stof(lhs), std::stof(rhs)};
+    DATA->m_values = Hyprutils::Math::Vector2D{std::stof(lhs), std::stof(rhs)};
 
     return result;
 }
@@ -327,8 +327,6 @@ void CConfigManager::init() {
     CLICKABLE("label");
 
     m_config.registerHandler(&::handleSource, "source", {.allowFlags = false});
-    m_config.registerHandler(&::handleBezier, "bezier", {.allowFlags = false});
-    m_config.registerHandler(&::handleAnimation, "animation", {.allowFlags = false});
 
     //
     // Init Animations
@@ -369,11 +367,10 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
 
 #define SHADOWABLE(name)                                                                                                                                                           \
     {"shadow_size", m_config.getSpecialConfigValue(name, "shadow_size", k.c_str())}, {"shadow_passes", m_config.getSpecialConfigValue(name, "shadow_passes", k.c_str())},          \
-        {"shadow_color", m_config.getSpecialConfigValue(name, "shadow_color", k.c_str())}, {                                                                                       \
-        "shadow_boost", m_config.getSpecialConfigValue(name, "shadow_boost", k.c_str())                                                                                            \
-    }
+        {"shadow_color", m_config.getSpecialConfigValue(name, "shadow_color", k.c_str())}, {"shadow_boost", m_config.getSpecialConfigValue(name, "shadow_boost", k.c_str())}
 
-#define CLICKABLE(name) {"onclick", m_config.getSpecialConfigValue(name, "onclick", k.c_str())}
+#define CLICKABLE(name)                                                                                                                                                            \
+    { "onclick", m_config.getSpecialConfigValue(name, "onclick", k.c_str()) }
 
     //
     auto keys = m_config.listKeysForSpecialCategory("background");
@@ -570,79 +567,79 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
     return {};
 }
 
-std::optional<std::string> CConfigManager::handleBezier(const std::string& command, const std::string& args) {
-    const auto  ARGS = CVarList(args);
+// std::optional<std::string> CConfigManager::handleBezier(const std::string& command, const std::string& args) {
+//     const auto  ARGS = CVarList(args);
+//
+//     std::string bezierName = ARGS[0];
+//
+//     if (ARGS[1] == "")
+//         return "too few arguments";
+//     float p1x = std::stof(ARGS[1]);
+//
+//     if (ARGS[2] == "")
+//         return "too few arguments";
+//     float p1y = std::stof(ARGS[2]);
+//
+//     if (ARGS[3] == "")
+//         return "too few arguments";
+//     float p2x = std::stof(ARGS[3]);
+//
+//     if (ARGS[4] == "")
+//         return "too few arguments";
+//     float p2y = std::stof(ARGS[4]);
+//
+//     if (ARGS[5] != "")
+//         return "too many arguments";
+//
+//     g_animationManager->addBezierWithName(bezierName, Vector2D(p1x, p1y), Vector2D(p2x, p2y));
+//
+//     return {};
+// }
 
-    std::string bezierName = ARGS[0];
-
-    if (ARGS[1] == "")
-        return "too few arguments";
-    float p1x = std::stof(ARGS[1]);
-
-    if (ARGS[2] == "")
-        return "too few arguments";
-    float p1y = std::stof(ARGS[2]);
-
-    if (ARGS[3] == "")
-        return "too few arguments";
-    float p2x = std::stof(ARGS[3]);
-
-    if (ARGS[4] == "")
-        return "too few arguments";
-    float p2y = std::stof(ARGS[4]);
-
-    if (ARGS[5] != "")
-        return "too many arguments";
-
-    g_pAnimationManager->addBezierWithName(bezierName, Vector2D(p1x, p1y), Vector2D(p2x, p2y));
-
-    return {};
-}
-
-std::optional<std::string> CConfigManager::handleAnimation(const std::string& command, const std::string& args) {
-    const auto ARGS = CVarList(args);
-
-    const auto ANIMNAME = ARGS[0];
-
-    if (!m_AnimationTree.nodeExists(ANIMNAME))
-        return "no such animation";
-
-    // This helper casts strings like "1", "true", "off", "yes"... to int.
-    int64_t enabledInt = configStringToInt(ARGS[1]);
-
-    // Checking that the int is 1 or 0 because the helper can return integers out of range.
-    if (enabledInt > 1 || enabledInt < 0)
-        return "invalid animation on/off state";
-
-    if (!enabledInt) {
-        m_AnimationTree.setConfigForNode(ANIMNAME, 0, 1, "default");
-        return {};
-    }
-
-    int64_t speed = -1;
-
-    // speed
-    if (isNumber(ARGS[2], true)) {
-        speed = std::stof(ARGS[2]);
-
-        if (speed <= 0) {
-            speed = 1.f;
-            return "invalid speed";
-        }
-    } else {
-        speed = 10.f;
-        return "invalid speed";
-    }
-
-    std::string bezierName = ARGS[3];
-    // ARGS[4] (style) currently usused by hyprlock
-    m_AnimationTree.setConfigForNode(ANIMNAME, enabledInt, speed, bezierName, "");
-
-    if (!g_pAnimationManager->bezierExists(bezierName)) {
-        const auto PANIMNODE      = m_AnimationTree.getConfig(ANIMNAME);
-        PANIMNODE->internalBezier = "default";
-        return "no such bezier";
-    }
-
-    return {};
-}
+// std::optional<std::string> CConfigManager::handleAnimation(const std::string& command, const std::string& args) {
+//     const auto ARGS = CVarList(args);
+//
+//     const auto ANIMNAME = ARGS[0];
+//
+//     if (!m_AnimationTree.nodeExists(ANIMNAME))
+//         return "no such animation";
+//
+//     // This helper casts strings like "1", "true", "off", "yes"... to int.
+//     int64_t enabledInt = configStringToInt(ARGS[1]);
+//
+//     // Checking that the int is 1 or 0 because the helper can return integers out of range.
+//     if (enabledInt > 1 || enabledInt < 0)
+//         return "invalid animation on/off state";
+//
+//     if (!enabledInt) {
+//         m_AnimationTree.setConfigForNode(ANIMNAME, 0, 1, "default");
+//         return {};
+//     }
+//
+//     int64_t speed = -1;
+//
+//     // speed
+//     if (isNumber(ARGS[2], true)) {
+//         speed = std::stof(ARGS[2]);
+//
+//         if (speed <= 0) {
+//             speed = 1.f;
+//             return "invalid speed";
+//         }
+//     } else {
+//         speed = 10.f;
+//         return "invalid speed";
+//     }
+//
+//     std::string bezierName = ARGS[3];
+//     // ARGS[4] (style) currently usused by hyprlock
+//     m_AnimationTree.setConfigForNode(ANIMNAME, enabledInt, speed, bezierName, "");
+//
+//     if (!g_animationManager->bezierExists(bezierName)) {
+//         const auto PANIMNODE      = m_AnimationTree.getConfig(ANIMNAME);
+//         PANIMNODE->internalBezier = "default";
+//         return "no such bezier";
+//     }
+//
+//     return {};
+// }

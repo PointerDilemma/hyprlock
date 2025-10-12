@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "../defines.hpp"
-#include "../core/Timer.hpp"
+#include <hyprtoolkit/core/Timer.hpp>
 
 enum eAuthImplementations {
     AUTH_IMPL_PAM         = 0,
@@ -15,13 +15,13 @@ class IAuthImplementation {
   public:
     virtual ~IAuthImplementation() = default;
 
-    virtual eAuthImplementations       getImplType()                         = 0;
-    virtual void                       init()                                = 0;
-    virtual void                       handleInput(const std::string& input) = 0;
-    virtual bool                       checkWaiting()                        = 0;
-    virtual std::optional<std::string> getLastFailText()                     = 0;
-    virtual std::optional<std::string> getLastPrompt()                       = 0;
-    virtual void                       terminate()                           = 0;
+    virtual eAuthImplementations       getImplType()                       = 0;
+    virtual void                       init()                              = 0;
+    virtual void                       handleInput(std::string_view input) = 0;
+    virtual bool                       checkWaiting()                      = 0;
+    virtual std::optional<std::string> getLastFailText()                   = 0;
+    virtual std::optional<std::string> getLastPrompt()                     = 0;
+    virtual void                       terminate()                         = 0;
 
     friend class CAuth;
 };
@@ -32,7 +32,7 @@ class CAuth {
 
     void                       start();
 
-    void                       submitInput(const std::string& input);
+    void                       submitInput(std::string_view input);
     bool                       checkWaiting();
 
     const std::string&         getCurrentFailText();
@@ -50,18 +50,17 @@ class CAuth {
 
     void                       resetDisplayFail();
 
-    // Should only be set via the main thread
-    bool m_bDisplayFailText = false;
-
+    bool                       m_displayFailText = false;
   private:
     struct {
-        std::string          failText       = "";
-        eAuthImplementations failSource     = AUTH_IMPL_PAM;
-        size_t               failedAttempts = 0;
-    } m_sCurrentFail;
+        std::string          failText   = "";
+        eAuthImplementations failSource = AUTH_IMPL_PAM;
 
+    } m_currentFail;
+
+    size_t                               m_failedAttempts  = 0;
     std::vector<SP<IAuthImplementation>> m_vImpls;
-    ASP<CTimer>                          m_resetDisplayFailTimer;
+    ASP<Hyprtoolkit::CTimer>             m_resetDisplayFailTimer;
 };
 
-inline UP<CAuth> g_pAuth;
+inline UP<CAuth> g_auth;

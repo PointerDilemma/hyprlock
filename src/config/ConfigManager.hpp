@@ -40,4 +40,4 @@ class CConfigManager {
     Hyprlang::CConfig m_config;
 };
 
-inline UP<CConfigManager> g_pConfigManager;
+inline UP<CConfigManager> g_configManager;

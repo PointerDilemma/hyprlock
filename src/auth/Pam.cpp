@@ -28,7 +28,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 Debug::log(LOG, "PAM_PROMPT: {}", PROMPT);
 
                 if (PROMPTCHANGED)
-                    g_pHyprlock->enqueueForceUpdateTimers();
+                    g_hyprlock->enqueueForceUpdateTimers();
 
                 // Some pam configurations ask for the password twice for whatever reason (Fedora su for example)
                 // When the prompt is the same as the last one, I guess our answer can be the same.
@@ -38,7 +38,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 }
 
                 // Needed for unlocks via SIGUSR1
-                if (g_pHyprlock->isUnlocked())
+                if (g_hyprlock->m_unlocked)
                     return PAM_CONV_ERR;
 
                 pamReply[i].resp = strdup(CONVERSATIONSTATE->input.c_str());
@@ -61,7 +61,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
 }
 
 CPam::CPam() {
-    static const auto PAMMODULE = g_pConfigManager->getValue<Hyprlang::STRING>("auth:pam:module");
+    static const auto PAMMODULE = g_configManager->getValue<Hyprlang::STRING>("auth:pam:module");
     m_sPamModule                = *PAMMODULE;
 
     if (!std::filesystem::exists(std::filesystem::path("/etc/pam.d/") / m_sPamModule)) {
@@ -86,19 +86,19 @@ void CPam::init() {
             waitForInput();
 
             // For grace or SIGUSR1 unlocks
-            if (g_pHyprlock->isUnlocked())
+            if (g_hyprlock->m_unlocked)
                 return;
 
             const auto AUTHENTICATED = auth();
 
             // For SIGUSR1 unlocks
-            if (g_pHyprlock->isUnlocked())
+            if (g_hyprlock->m_unlocked)
                 return;
 
             if (!AUTHENTICATED)
-                g_pAuth->enqueueFail(m_sConversationState.failText, AUTH_IMPL_PAM);
+                g_auth->enqueueFail(m_sConversationState.failText, AUTH_IMPL_PAM);
             else {
-                g_pAuth->enqueueUnlock();
+                g_auth->enqueueUnlock();
                 return;
             }
         }
@@ -143,11 +143,11 @@ void CPam::waitForInput() {
     m_bBlockInput                          = false;
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = true;
-    m_sConversationState.inputSubmittedCondition.wait(lk, [this] { return !m_sConversationState.inputRequested || g_pHyprlock->m_bTerminate; });
+    m_sConversationState.inputSubmittedCondition.wait(lk, [this] { return !m_sConversationState.inputRequested || g_hyprlock->m_unlocked; });
     m_bBlockInput = true;
 }
 
-void CPam::handleInput(const std::string& input) {
+void CPam::handleInput(std::string_view input) {
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
 
     if (!m_sConversationState.inputRequested)

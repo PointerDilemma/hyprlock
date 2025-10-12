@@ -76,16 +76,9 @@ pkg_check_modules(
   deps
   REQUIRED
   IMPORTED_TARGET
-  wayland-client
-  wayland-protocols>=1.35
-  wayland-egl
   hyprlang>=0.6.0
-  egl
-  xkbcommon
-  cairo
-  pangocairo
   libdrm
-  gbm
+  hyprtoolkit
   hyprutils>=0.8.0
   sdbus-c++>=2.0.0
   hyprgraphics>=0.1.6)
@@ -102,55 +95,15 @@ else()
   endif()
 endif()
 
-file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
-add_executable(hyprlock ${SRCFILES})
+#file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
+file(GLOB_RECURSE SRCFILES1 CONFIGURE_DEPENDS "src/core/*.cpp")
+file(GLOB_RECURSE SRCFILES2 CONFIGURE_DEPENDS "src/auth/*.cpp")
+file(GLOB_RECURSE SRCFILES3 CONFIGURE_DEPENDS "src/helpers/*.cpp")
+file(GLOB_RECURSE SRCFILES4 CONFIGURE_DEPENDS "src/config/*.cpp")
+file(GLOB_RECURSE SRCFILES5 CONFIGURE_DEPENDS "src/widgets/*.cpp")
+add_executable(hyprlock ${SRCFILES1} ${SRCFILES2} ${SRCFILES3} ${SRCFILES4} ${SRCFILES5} "src/main.cpp")
 target_link_libraries(hyprlock PRIVATE ${PAM_LIB} rt Threads::Threads PkgConfig::deps
                                        OpenGL::EGL OpenGL::GLES3)
-
-# protocols
-pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
-message(STATUS "Found wayland-protocols at ${WAYLAND_PROTOCOLS_DIR}")
-pkg_get_variable(WAYLAND_SCANNER_PKGDATA_DIR wayland-scanner pkgdatadir)
-message(
-  STATUS "Found wayland-scanner pkgdatadir at ${WAYLAND_SCANNER_PKGDATA_DIR}")
-
-function(protocolnew protoPath protoName external)
-  if(external)
-    set(path ${CMAKE_SOURCE_DIR}/${protoPath})
-  else()
-    set(path ${WAYLAND_PROTOCOLS_DIR}/${protoPath})
-  endif()
-  add_custom_command(
-    OUTPUT ${CMAKE_SOURCE_DIR}/protocols/${protoName}.cpp
-           ${CMAKE_SOURCE_DIR}/protocols/${protoName}.hpp
-    COMMAND hyprwayland-scanner --client ${path}/${protoName}.xml
-            ${CMAKE_SOURCE_DIR}/protocols/
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-  target_sources(hyprlock PRIVATE protocols/${protoName}.cpp
-                                   protocols/${protoName}.hpp)
-endfunction()
-function(protocolWayland)
-  add_custom_command(
-    OUTPUT ${CMAKE_SOURCE_DIR}/protocols/wayland.cpp
-           ${CMAKE_SOURCE_DIR}/protocols/wayland.hpp
-    COMMAND hyprwayland-scanner --wayland-enums --client
-            ${WAYLAND_SCANNER_PKGDATA_DIR}/wayland.xml ${CMAKE_SOURCE_DIR}/protocols/
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-  target_sources(hyprlock PRIVATE protocols/wayland.cpp protocols/wayland.hpp)
-endfunction()
-
-make_directory(${CMAKE_SOURCE_DIR}/protocols) # we don't ship any custom ones so
-                                              # the dir won't be there
-
-protocolwayland()
-
-protocolnew("protocols" "wlr-screencopy-unstable-v1" true)
-protocolnew("staging/ext-session-lock" "ext-session-lock-v1" false)
-protocolnew("stable/linux-dmabuf" "linux-dmabuf-v1" false)
-protocolnew("staging/fractional-scale" "fractional-scale-v1" false)
-protocolnew("stable/viewporter" "viewporter" false)
-protocolnew("staging/cursor-shape" "cursor-shape-v1" false)
-protocolnew("stable/tablet" "tablet-v2" false)
 
 # Installation
 install(TARGETS hyprlock)

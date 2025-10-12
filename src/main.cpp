@@ -1,8 +1,8 @@
 
+#include "auth/Auth.hpp"
 #include "config/ConfigManager.hpp"
 #include "core/hyprlock.hpp"
 #include "helpers/Log.hpp"
-#include "core/AnimationManager.hpp"
 #include <cstddef>
 #include <string_view>
 
@@ -39,7 +39,6 @@ static void printVersion() {
 
 int main(int argc, char** argv, char** envp) {
     std::string              configPath;
-    std::string              wlDisplay;
     bool                     immediateRender = false;
     bool                     noFadeIn        = false;
     int                      graceSeconds    = 0;
@@ -68,12 +67,6 @@ int main(int argc, char** argv, char** envp) {
         else if ((arg == "--config" || arg == "-c") && i + 1 < (std::size_t)argc) {
             if (auto value = parseArg(args, arg, i); value)
                 configPath = *value;
-            else
-                return 1;
-
-        } else if (arg == "--display" && i + 1 < (std::size_t)argc) {
-            if (auto value = parseArg(args, arg, i); value)
-                wlDisplay = *value;
             else
                 return 1;
 
@@ -111,11 +104,10 @@ int main(int argc, char** argv, char** envp) {
     }
 
     printVersion();
-    g_pAnimationManager = makeUnique<CHyprlockAnimationManager>();
 
     try {
-        g_pConfigManager = makeUnique<CConfigManager>(configPath);
-        g_pConfigManager->init();
+        g_configManager = makeUnique<CConfigManager>(configPath);
+        g_configManager->init();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "ConfigManager threw: {}", ex.what());
         if (std::string(ex.what()).contains("File does not exist"))
@@ -124,16 +116,20 @@ int main(int argc, char** argv, char** envp) {
         return 1;
     }
 
+    g_auth = makeUnique<CAuth>();
+
     if (noFadeIn)
-        g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
+        g_configManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
 
     try {
-        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediateRender, graceSeconds);
-        g_pHyprlock->run();
+        g_hyprlock = makeUnique<CHyprlock>(immediateRender, graceSeconds);
+        g_hyprlock->run();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
-        return 1;
+        return 3;
     }
+
+    g_auth.reset();
 
     return 0;
 }

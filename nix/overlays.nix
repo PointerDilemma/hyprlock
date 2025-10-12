@@ -14,10 +14,7 @@ in {
   default = inputs.self.overlays.hyprlock;
 
   hyprlock = lib.composeManyExtensions [
-    inputs.hyprgraphics.overlays.default
-    inputs.hyprlang.overlays.default
-    inputs.hyprutils.overlays.default
-    inputs.hyprwayland-scanner.overlays.default
+    inputs.hyprtoolkit.overlays.default
     inputs.self.overlays.sdbuscpp
     (final: prev: {
       hyprlock = prev.callPackage ./default.nix {

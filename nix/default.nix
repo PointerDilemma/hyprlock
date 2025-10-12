@@ -2,6 +2,7 @@
   lib,
   stdenv,
   stdenvAdapters,
+  aquamarine,
   cmake,
   pkg-config,
   cairo,
@@ -11,6 +12,7 @@
   libgbm,
   hyprgraphics,
   hyprlang,
+  hyprtoolkit,
   hyprutils,
   hyprwayland-scanner,
   pam,
@@ -56,6 +58,7 @@ customStdenv.mkDerivation {
   ];
 
   buildInputs = [
+    aquamarine
     cairo
     libdrm
     libGL
@@ -63,6 +66,7 @@ customStdenv.mkDerivation {
     libgbm
     hyprgraphics
     hyprlang
+    hyprtoolkit
     hyprutils
     pam
     pango
